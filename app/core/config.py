@@ -7,15 +7,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """настройки приложения"""
 
-    app_name: str = "Bookmarks API"
-    app_version: str = "1.0.0"
+    app_name: str = "bookmarks api"
     api_prefix: str = "/api/v1"
-
     database_url: str = Field(
         default="postgresql+psycopg://bookmarks:bookmarks@localhost:5432/bookmarks"
     )
-    page_size_default: int = 10
-    page_size_max: int = 100
+    auth_token: str = Field(default="dev-secret-token")
 
     model_config = SettingsConfigDict(
         env_file=".env",

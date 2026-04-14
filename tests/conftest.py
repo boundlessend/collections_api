@@ -13,6 +13,15 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 
+TEST_AUTH_TOKEN = "dev-secret-token"
+
+
+@pytest.fixture()
+def auth_headers() -> dict[str, str]:
+    """возвращает заголовки авторизации для тестов"""
+
+    return {"Authorization": f"Bearer {TEST_AUTH_TOKEN}"}
+
 
 @pytest.fixture()
 def client(tmp_path: Path) -> TestClient:
@@ -22,7 +31,7 @@ def client(tmp_path: Path) -> TestClient:
     engine = create_engine(
         f"sqlite:///{db_path}", connect_args={"check_same_thread": False}
     )
-    TestingSessionLocal = sessionmaker(
+    testing_session_local = sessionmaker(
         bind=engine, autoflush=False, autocommit=False, expire_on_commit=False
     )
 
@@ -31,7 +40,7 @@ def client(tmp_path: Path) -> TestClient:
     def override_get_db():
         """подменяет зависимость сессии для тестов"""
 
-        db = TestingSessionLocal()
+        db = testing_session_local()
         try:
             yield db
         finally:

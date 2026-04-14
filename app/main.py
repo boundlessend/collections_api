@@ -11,14 +11,7 @@ from app.exceptions import (
 
 settings = get_settings()
 
-app = FastAPI(title=settings.app_name, version=settings.app_version)
+app = FastAPI(title=settings.app_name)
 app.add_exception_handler(APIException, api_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.include_router(collections_router, prefix=settings.api_prefix)
-
-
-@app.get("/health")
-def healthcheck() -> dict[str, str]:
-    """возвращает статус сервиса"""
-
-    return {"status": "ok"}

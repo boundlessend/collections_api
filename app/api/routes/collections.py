@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
+from app.core.security import require_auth
 from app.db.session import get_db
 from app.schemas.bookmark import BookmarkCreate, BookmarkRead
 from app.schemas.collection import (
@@ -21,14 +22,18 @@ from app.services.collections import (
     update_collection_name,
 )
 
-router = APIRouter(prefix="/collections", tags=["collections"])
+router = APIRouter(
+    prefix="/collections",
+    tags=["collections"],
+    dependencies=[Depends(require_auth)],
+)
 
 
 @router.post(
     "",
     response_model=CollectionRead,
     status_code=status.HTTP_201_CREATED,
-    responses={422: {"model": ErrorResponse}},
+    responses={401: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
 )
 def create_collection_endpoint(
     payload: CollectionCreate, db: Session = Depends(get_db)
@@ -42,7 +47,11 @@ def create_collection_endpoint(
 @router.patch(
     "/{collection_id}",
     response_model=CollectionRead,
-    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    responses={
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+    },
 )
 def update_collection_endpoint(
     collection_id: int,
@@ -60,7 +69,7 @@ def update_collection_endpoint(
 @router.get(
     "",
     response_model=CollectionsPage,
-    responses={422: {"model": ErrorResponse}},
+    responses={401: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
 )
 def list_collections_endpoint(
     page: int = Query(1, ge=1),
@@ -83,6 +92,7 @@ def list_collections_endpoint(
     response_model=BookmarkRead,
     status_code=status.HTTP_201_CREATED,
     responses={
+        401: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
         409: {"model": ErrorResponse},
         422: {"model": ErrorResponse},
@@ -104,7 +114,11 @@ def add_bookmark_endpoint(
 @router.get(
     "/{collection_id}/bookmarks",
     response_model=CollectionBookmarksRead,
-    responses={404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    responses={
+        401: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        422: {"model": ErrorResponse},
+    },
 )
 def list_bookmarks_endpoint(
     collection_id: int,
@@ -128,7 +142,7 @@ def list_bookmarks_endpoint(
 @router.delete(
     "/{collection_id}/bookmarks/{bookmark_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses={404: {"model": ErrorResponse}},
+    responses={401: {"model": ErrorResponse}, 404: {"model": ErrorResponse}},
 )
 def delete_bookmark_endpoint(
     collection_id: int,

@@ -13,7 +13,6 @@ from app.exceptions import (
 from app.schemas.bookmark import BookmarkCreate
 from app.schemas.collection import BookmarkSort
 
-
 SORT_MAPPING = {
     "created_at": CollectionBookmark.created_at.asc(),
     "-created_at": CollectionBookmark.created_at.desc(),

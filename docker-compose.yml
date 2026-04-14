@@ -22,6 +22,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql+psycopg://bookmarks:bookmarks@db:5432/bookmarks
+      AUTH_TOKEN: dev-secret-token
     ports:
       - "8000:8000"
 

@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -14,12 +14,42 @@ class APIException(HTTPException):
         code: str,
         message: str,
         details: list[dict[str, Any]] | None = None,
+        headers: dict[str, str] | None = None,
     ):
         """собирает тело ошибки для клиента"""
 
         super().__init__(
             status_code=status_code,
             detail={"code": code, "message": message, "details": details},
+            headers=headers,
+        )
+
+
+class AuthRequired(APIException):
+    """ошибка отсутствующей авторизации"""
+
+    def __init__(self):
+        """формирует ошибку для отсутствующего токена"""
+
+        super().__init__(
+            status.HTTP_401_UNAUTHORIZED,
+            "authorization_required",
+            "Authorization header with bearer token is required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+class InvalidAuthToken(APIException):
+    """ошибка неверного токена"""
+
+    def __init__(self):
+        """формирует ошибку для неверного токена"""
+
+        super().__init__(
+            status.HTTP_401_UNAUTHORIZED,
+            "invalid_token",
+            "Provided bearer token is invalid",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
 
@@ -79,7 +109,9 @@ async def api_exception_handler(_: Request, exc: APIException) -> JSONResponse:
     """приводит кастомные исключения к общему формату"""
 
     return JSONResponse(
-        status_code=exc.status_code, content={"error": exc.detail}
+        status_code=exc.status_code,
+        content={"error": exc.detail},
+        headers=exc.headers,
     )
 
 

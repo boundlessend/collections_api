@@ -1,11 +1,12 @@
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import Field, HttpUrl, field_validator
 
-from app.schemas.common import APIModel
+from app.schemas.common import MoscowTimeModel
 
 
-class BookmarkCreate(APIModel):
+class BookmarkCreate(MoscowTimeModel):
     """схема создания статьи"""
 
     title: str = Field(min_length=1, max_length=255)
@@ -22,10 +23,10 @@ class BookmarkCreate(APIModel):
         return normalized
 
 
-class BookmarkRead(APIModel):
+class BookmarkRead(MoscowTimeModel):
     """схема статьи в ответе"""
 
-    id: int
+    id: UUID
     title: str
     url: str
     created_at: datetime

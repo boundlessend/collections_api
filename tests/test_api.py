@@ -7,7 +7,7 @@ def test_auth_is_required_for_api(client):
     assert response.json()["error"]["code"] == "authorization_required"
 
 
-def test_invalid_token_returns_401(client):
+def test_invalid_token_returns_403(client):
     """проверяет что неверный токен отклоняется"""
 
     response = client.get(
@@ -15,7 +15,7 @@ def test_invalid_token_returns_401(client):
         headers={"Authorization": "Bearer wrong-token"},
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 403
     assert response.json()["error"]["code"] == "invalid_token"
 
 
@@ -42,6 +42,24 @@ def test_create_collection_and_list_with_pagination(client, auth_headers):
     assert data["pages"] == 2
     assert len(data["items"]) == 2
     assert data["items"][0]["name"] == "Collection 1"
+    assert isinstance(data["items"][0]["id"], str)
+
+
+def test_collection_time_is_serialized_in_moscow_timezone(
+    client, auth_headers
+):
+    """проверяет сериализацию времени по москве"""
+
+    response = client.post(
+        "/api/v1/collections",
+        json={"name": "Timezone collection"},
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["created_at"].endswith("+03:00")
+    assert body["updated_at"].endswith("+03:00")
 
 
 def test_add_bookmark_and_sort_inside_collection(client, auth_headers):
@@ -68,12 +86,13 @@ def test_add_bookmark_and_sort_inside_collection(client, auth_headers):
         assert response.status_code == 201
 
     response = client.get(
-        f"/api/v1/collections/{collection_id}/bookmarks?sort=title",
+        f"/api/v1/collections/{collection_id}/bookmarks?sort=title_asc",
         headers=auth_headers,
     )
     assert response.status_code == 200
 
     data = response.json()
+    assert data["sort"] == "title_asc"
     assert [item["title"] for item in data["items"]] == [
         "Alpha article",
         "Gamma article",
@@ -117,14 +136,15 @@ def test_nonexistent_collection_returns_404(client, auth_headers):
     """проверяет 404 для несуществующей коллекции"""
 
     response = client.get(
-        "/api/v1/collections/999/bookmarks", headers=auth_headers
+        "/api/v1/collections/00000000-0000-0000-0000-000000000001/bookmarks",
+        headers=auth_headers,
     )
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "collection_not_found"
 
 
-def test_delete_bookmark_from_collection(client, auth_headers):
+def test_delete_bookmark_from_collection_returns_message(client, auth_headers):
     """проверяет удаление статьи из коллекции"""
 
     collection = client.post(
@@ -142,7 +162,11 @@ def test_delete_bookmark_from_collection(client, auth_headers):
         f"/api/v1/collections/{collection['id']}/bookmarks/{bookmark['id']}",
         headers=auth_headers,
     )
-    assert delete_response.status_code == 204
+    assert delete_response.status_code == 200
+    assert (
+        delete_response.json()["message"]
+        == "Bookmark was removed from collection"
+    )
 
     list_response = client.get(
         f"/api/v1/collections/{collection['id']}/bookmarks",
@@ -150,6 +174,30 @@ def test_delete_bookmark_from_collection(client, auth_headers):
     )
     assert list_response.status_code == 200
     assert list_response.json()["items"] == []
+
+
+def test_delete_collection_returns_message(client, auth_headers):
+    """проверяет удаление коллекции"""
+
+    collection = client.post(
+        "/api/v1/collections",
+        json={"name": "To delete"},
+        headers=auth_headers,
+    ).json()
+
+    response = client.delete(
+        f"/api/v1/collections/{collection['id']}",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Collection was deleted"
+
+    check_response = client.get(
+        f"/api/v1/collections/{collection['id']}/bookmarks",
+        headers=auth_headers,
+    )
+    assert check_response.status_code == 404
 
 
 def test_update_collection_name(client, auth_headers):

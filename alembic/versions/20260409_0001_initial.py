@@ -20,48 +20,28 @@ def upgrade() -> None:
 
     op.create_table(
         "collections",
-        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("name", sa.String(length=255), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_collections")),
     )
 
     op.create_table(
         "bookmarks",
-        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("title", sa.String(length=255), nullable=False),
         sa.Column("url", sa.String(length=2048), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_bookmarks")),
         sa.UniqueConstraint("url", name=op.f("uq_bookmarks_url")),
     )
 
     op.create_table(
         "collection_bookmarks",
-        sa.Column("collection_id", sa.Integer(), nullable=False),
-        sa.Column("bookmark_id", sa.Integer(), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
+        sa.Column("collection_id", sa.Uuid(), nullable=False),
+        sa.Column("bookmark_id", sa.Uuid(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(
             ["bookmark_id"],
             ["bookmarks.id"],

@@ -1,4 +1,5 @@
 from typing import Any
+from uuid import UUID
 
 from fastapi import HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -46,17 +47,16 @@ class InvalidAuthToken(APIException):
         """формирует ошибку для неверного токена"""
 
         super().__init__(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             "invalid_token",
             "Provided bearer token is invalid",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
 
 class CollectionNotFound(APIException):
     """ошибка отсутствующей коллекции"""
 
-    def __init__(self, collection_id: int):
+    def __init__(self, collection_id: UUID):
         """формирует ошибку для несуществующей коллекции"""
 
         super().__init__(
@@ -69,7 +69,7 @@ class CollectionNotFound(APIException):
 class BookmarkNotFound(APIException):
     """ошибка отсутствующей статьи"""
 
-    def __init__(self, bookmark_id: int):
+    def __init__(self, bookmark_id: UUID):
         """формирует ошибку для несуществующей статьи"""
 
         super().__init__(
@@ -82,7 +82,7 @@ class BookmarkNotFound(APIException):
 class BookmarkAlreadyInCollection(APIException):
     """ошибка повторного добавления статьи"""
 
-    def __init__(self, collection_id: int, url: str):
+    def __init__(self, collection_id: UUID, url: str):
         """формирует ошибку дубля внутри коллекции"""
 
         super().__init__(
@@ -95,7 +95,7 @@ class BookmarkAlreadyInCollection(APIException):
 class BookmarkNotInCollection(APIException):
     """ошибка отсутствующей связи статьи и коллекции"""
 
-    def __init__(self, collection_id: int, bookmark_id: int):
+    def __init__(self, collection_id: UUID, bookmark_id: UUID):
         """формирует ошибку для несвязанной статьи"""
 
         super().__init__(

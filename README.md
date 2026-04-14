@@ -4,9 +4,10 @@
 
 - создать коллекцию
 - обновить название коллекции
+- удалить коллекцию
 - получить список коллекций с пагинацией
 - добавить статью в коллекцию
-- посмотреть статьи внутри коллекции с сортировкой
+- посмотреть статьи внутри коллекции
 - удалить статью из коллекции
 
 ## стек
@@ -39,6 +40,7 @@ app/
   api/routes/collections.py   # http-ручки
   core/config.py              # настройки
   core/security.py            # проверка bearer token
+  core/time.py                # московское время
   db/base.py                  # base + naming convention
   db/models.py                # orm-модели
   db/session.py               # engine + session dependency
@@ -58,20 +60,20 @@ Makefile
 ### таблицы
 
 1. `collections`
-   - `id`
+   - `id` as uuid
    - `name`
    - `created_at`
    - `updated_at`
 
 2. `bookmarks`
-   - `id`
+   - `id` as uuid
    - `title`
    - `url`
    - `created_at`
 
 3. `collection_bookmarks`
-   - `collection_id`
-   - `bookmark_id`
+   - `collection_id` as uuid
+   - `bookmark_id` as uuid
    - `created_at`
 
 ### как устроены связи
@@ -79,12 +81,13 @@ Makefile
 - `collection` ↔ `bookmark` — связь many-to-many через таблицу `collection_bookmarks`
 - один и тот же bookmark можно использовать в нескольких коллекциях
 - один и тот же url хранится в `bookmarks` один раз
+- все даты и время в ответах сериализуются по московскому часовому поясу
 
 ### что защищает от дублей
 
 - `bookmarks.url` помечен как `unique`
 - в таблице связи есть `unique(collection_id, bookmark_id)`
-- на уровне сервиса есть явная проверка перед добавлением bookmark в коллекцию, чтобы вернуть контролируемую ошибку `409`, а не необработанный database error
+- на уровне сервиса есть явная проверка перед добавлением bookmark в коллекцию, чтобы вернуть контролируемую ошибку `409`
 
 ## формат ошибок
 
@@ -92,41 +95,19 @@ Makefile
 {
   "error": {
     "code": "collection_not_found",
-    "message": "Collection with id=123 was not found",
+    "message": "Collection with id=... was not found",
     "details": null
   }
 }
 ```
 
-для ошибок валидации
+логика статус-кодов
 
-```json
-{
-  "error": {
-    "code": "validation_error",
-    "message": "Request validation failed",
-    "details": [
-      {
-        "field": "name",
-        "message": "Value error, Collection name must not be blank",
-        "type": "value_error"
-      }
-    ]
-  }
-}
-```
-
-для ошибок авторизации
-
-```json
-{
-  "error": {
-    "code": "authorization_required",
-    "message": "Authorization header with bearer token is required",
-    "details": null
-  }
-}
-```
+- `401` — нет заголовка авторизации или неверная схема
+- `403` — токен передан, но он неверный
+- `404` — сущность не найдена
+- `409` — конфликт из-за дубля
+- `422` — ошибка валидации входных данных
 
 ## api
 
@@ -150,11 +131,23 @@ Makefile
 }
 ```
 
-### 3. список коллекций
+### 3. удалить коллекцию
+
+`DELETE /api/v1/collections/{collection_id}`
+
+ответ
+
+```json
+{
+  "message": "Collection was deleted"
+}
+```
+
+### 4. список коллекций
 
 `GET /api/v1/collections?page=1&size=10`
 
-### 4. добавить статью в коллекцию
+### 5. добавить статью в коллекцию
 
 `POST /api/v1/collections/{collection_id}/bookmarks`
 
@@ -165,22 +158,30 @@ Makefile
 }
 ```
 
-### 5. список статей в коллекции
+### 6. список статей в коллекции
 
-`GET /api/v1/collections/{collection_id}/bookmarks?sort=created_at`
+`GET /api/v1/collections/{collection_id}/bookmarks?sort=created_desc`
 
 поддерживаемая сортировка
 
-- `created_at`
-- `-created_at`
-- `title`
-- `-title`
-- `url`
-- `-url`
+- `created_asc`
+- `created_desc`
+- `title_asc`
+- `title_desc`
+- `url_asc`
+- `url_desc`
 
-### 6. удалить статью из коллекции
+### 7. удалить статью из коллекции
 
 `DELETE /api/v1/collections/{collection_id}/bookmarks/{bookmark_id}`
+
+ответ
+
+```json
+{
+  "message": "Bookmark was removed from collection"
+}
+```
 
 ## локальный запуск
 
@@ -197,6 +198,7 @@ docker compose up db -d
 ```bash
 make install
 source .venv/bin/activate
+cp .env.example .env
 ```
 
 ### 3. при необходимости сменить токен в `.env`
@@ -267,29 +269,31 @@ make test
 в проекте есть тесты на
 
 - обязательную авторизацию
-- отклонение неверного токена
+- отклонение неверного токена с `403`
 - создание и пагинацию коллекций
+- сериализацию времени по москве
 - добавление статьи и сортировку
 - защиту от дублей
 - 404 для несуществующей коллекции
-- удаление статьи из коллекции
+- удаление статьи с сообщением в ответе
+- удаление коллекции
 - обновление названия коллекции
 - единый формат ошибки валидации
 
 ## сценарии ручной проверки
 
 1. выполнить `GET /api/v1/collections` без заголовка авторизации и получить `401`
-2. создать коллекцию через `POST /api/v1/collections` с корректным bearer token и получить `201`
-3. переименовать коллекцию через `PATCH /api/v1/collections/{id}` и проверить новое имя в ответе
-4. создать 3 коллекции и получить `GET /api/v1/collections?page=1&size=2` — должно вернуться 2 элемента и корректные `total/pages`
-5. добавить статью в коллекцию и проверить, что она видна в `GET /api/v1/collections/{id}/bookmarks`
-6. попробовать добавить тот же url в ту же коллекцию повторно — должен прийти `409`
-7. удалить статью из коллекции и убедиться, что после повторного `GET` список пуст
+2. выполнить тот же запрос с неверным bearer token и получить `403`
+3. создать коллекцию и убедиться, что `id` пришёл как uuid, а `created_at` содержит смещение `+03:00`
+4. создать несколько коллекций и проверить пагинацию через `GET /api/v1/collections?page=1&size=2`
+5. добавить статью в коллекцию и проверить сортировку через `sort=title_asc` и `sort=created_desc`
+6. удалить статью из коллекции и получить json с сообщением об удалении
+7. удалить коллекцию и убедиться, что повторный запрос к её статьям возвращает `404`
 
 ## негативные сценарии, которые покрыты
 
 - запрос без токена → `401`
-- запрос с неверным токеном → `401`
+- запрос с неверным токеном → `403`
 - добавление одной и той же статьи в коллекцию дважды → `409`
 - работа с несуществующей коллекцией → `404`
 - удаление несуществующей статьи → `404`

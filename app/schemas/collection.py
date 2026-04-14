@@ -1,18 +1,24 @@
 from datetime import datetime
 from math import ceil
 from typing import Literal
+from uuid import UUID
 
 from pydantic import Field, field_validator
 
 from app.schemas.bookmark import BookmarkRead
-from app.schemas.common import APIModel
+from app.schemas.common import MessageResponse, MoscowTimeModel
 
 BookmarkSort = Literal[
-    "created_at", "title", "url", "-created_at", "-title", "-url"
+    "created_asc",
+    "created_desc",
+    "title_asc",
+    "title_desc",
+    "url_asc",
+    "url_desc",
 ]
 
 
-class CollectionCreate(APIModel):
+class CollectionCreate(MoscowTimeModel):
     """схема создания коллекции"""
 
     name: str = Field(min_length=1, max_length=255)
@@ -28,7 +34,7 @@ class CollectionCreate(APIModel):
         return normalized
 
 
-class CollectionUpdate(APIModel):
+class CollectionUpdate(MoscowTimeModel):
     """схема обновления коллекции"""
 
     name: str = Field(min_length=1, max_length=255)
@@ -44,16 +50,16 @@ class CollectionUpdate(APIModel):
         return normalized
 
 
-class CollectionRead(APIModel):
+class CollectionRead(MoscowTimeModel):
     """схема коллекции в ответе"""
 
-    id: int
+    id: UUID
     name: str
     created_at: datetime
     updated_at: datetime
 
 
-class CollectionsPage(APIModel):
+class CollectionsPage(MoscowTimeModel):
     """страница коллекций"""
 
     items: list[CollectionRead]
@@ -82,11 +88,15 @@ class CollectionsPage(APIModel):
         )
 
 
-class CollectionBookmarksRead(APIModel):
+class CollectionBookmarksRead(MoscowTimeModel):
     """список статей внутри коллекции"""
 
-    collection_id: int
+    collection_id: UUID
     collection_name: str
     sort: BookmarkSort
     total: int
     items: list[BookmarkRead]
+
+
+class DeleteResult(MessageResponse):
+    """ответ после удаления сущности"""

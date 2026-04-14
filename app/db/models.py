@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import List
+from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.time import moscow_now
 from app.db.base import Base
 
 
@@ -19,14 +21,20 @@ class CollectionBookmark(Base):
         ),
     )
 
-    collection_id: Mapped[int] = mapped_column(
-        ForeignKey("collections.id", ondelete="CASCADE"), primary_key=True
+    collection_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("collections.id", ondelete="CASCADE"),
+        primary_key=True,
     )
-    bookmark_id: Mapped[int] = mapped_column(
-        ForeignKey("bookmarks.id", ondelete="CASCADE"), primary_key=True
+    bookmark_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("bookmarks.id", ondelete="CASCADE"),
+        primary_key=True,
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True),
+        default=moscow_now,
+        nullable=False,
     )
 
 
@@ -35,15 +43,17 @@ class Collection(Base):
 
     __tablename__ = "collections"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True),
+        default=moscow_now,
+        nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
+        default=moscow_now,
+        onupdate=moscow_now,
         nullable=False,
     )
 
@@ -59,11 +69,13 @@ class Bookmark(Base):
 
     __tablename__ = "bookmarks"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     url: Mapped[str] = mapped_column(String(2048), nullable=False, unique=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
+        DateTime(timezone=True),
+        default=moscow_now,
+        nullable=False,
     )
 
     collections: Mapped[List[Collection]] = relationship(
